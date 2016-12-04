@@ -8,6 +8,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.Toast;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 
 import okhttp3.Call;
@@ -18,6 +21,7 @@ import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
     public static final String TAG = MainActivity.class.getSimpleName();
+    private CurrentWeather mCurrentWeather;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         String apiKey = "da7a2ab35d068950e8bb9a1c4639bc6a";
         double latitude=40.64730356;
-        double longitude=74.00270462;
+        double longitude=-74.00270462;
         String forecastUrl ="https://api.darksky.net/forecast/" + apiKey + "/" + latitude + "," + longitude;
 
         if (networkIsAvailable()){
@@ -44,12 +48,17 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
                     try {
+                        String jSonData = response.body().string();
+                        Log.v(TAG,jSonData);
                         if (response.isSuccessful()) {
-                            Log.v(TAG, response.body().string());
+                            mCurrentWeather = getCurrentDetails(jSonData);
+
                         } else {
                             alertUsersAboutError();
                         }
                     } catch (IOException e) {
+                        Log.e(TAG, "Exception caught: ", e);
+                    } catch (JSONException e){
                         Log.e(TAG, "Exception caught: ", e);
                     }
                 }
@@ -58,6 +67,26 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.network_unavailable_message, Toast.LENGTH_LONG).show();
         }
         Log.d(TAG,"main ui code is running");
+    }
+
+    private CurrentWeather getCurrentDetails(String jSonData) throws JSONException {
+        JSONObject foreCast = new JSONObject(jSonData);
+        String timeZone = foreCast.getString("timezone");
+        JSONObject currently = foreCast.getJSONObject("currently");
+
+        CurrentWeather currentWeather = new CurrentWeather();
+        currentWeather.setTemperature(currently.getDouble("temperature"));
+        currentWeather.setIcon(currently.getString("icon"));
+        currentWeather.setHumidity(currently.getDouble("humidity"));
+        currentWeather.setPrecipChance(currently.getDouble("precipProbability"));
+        currentWeather.setSummary(currently.getString("summary"));
+        currentWeather.setTimeZone(timeZone);
+        currentWeather.setTime(currently.getLong("time"));
+
+        Log.i(TAG,"from json" + timeZone);
+        Log.i(TAG, currentWeather.getFormattedTime());
+
+        return currentWeather;
     }
 
     private boolean networkIsAvailable() {
